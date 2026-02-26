@@ -1,0 +1,54 @@
+name: "Enqueue Pull Request"
+description: "Automatically enqueue pull requests into GitHub's native merge queue based on labels and review status"
+author: "waheedahmed"
+
+inputs:
+  github-token:
+    description: >
+      GitHub token used to call the API. Needs `pull-requests: write` and
+      `repository-projects: read` permissions. Defaults to the built-in
+      GITHUB_TOKEN, but a PAT is recommended so that the action can trigger
+      subsequent workflows.
+    required: false
+    default: "${{ github.token }}"
+
+  label:
+    description: >
+      Label that triggers adding a PR to the merge queue.
+      Set to an empty string to process every open PR regardless of labels.
+    required: false
+    default: "enqueue-pullrequest"
+
+  skip-labels:
+    description: >
+      Comma-separated list of labels that prevent a PR from being added to the
+      merge queue (e.g. "wip, do-not-merge, blocked").
+    required: false
+    default: ""
+
+  base-branches:
+    description: >
+      Comma-separated list of base branch names to limit processing to.
+      Leave empty to process PRs targeting any branch.
+    required: false
+    default: ""
+
+  skip-drafts:
+    description: "When true, draft pull requests are skipped."
+    required: false
+    default: "true"
+
+  required-approvals:
+    description: >
+      Minimum number of approving reviews required before a PR is enqueued.
+      Set to 0 to skip this check and rely solely on branch-protection rules.
+    required: false
+    default: "0"
+
+runs:
+  using: "node20"
+  main: "dist/index.js"
+
+branding:
+  icon: "git-merge"
+  color: "green"
