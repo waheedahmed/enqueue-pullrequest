@@ -112,4 +112,4 @@ npm run all
 
 ## License
 
-MIT
+[MIT](./LICENSE)
