@@ -77,6 +77,23 @@ async function enqueue(octokit, prNodeId) {
   return result.enqueuePullRequest?.mergeQueueEntry ?? null;
 }
 
+/** Returns true if the merge queue is enabled for the given branch. */
+async function isMergeQueueEnabled(octokit, owner, repo, branch) {
+  const { repository } = await octokit.graphql(
+    `
+    query MergeQueueEnabled($owner: String!, $repo: String!, $branch: String!) {
+      repository(owner: $owner, name: $repo) {
+        mergeQueue(branch: $branch) {
+          id
+        }
+      }
+    }
+    `,
+    { owner, repo, branch }
+  );
+  return repository?.mergeQueue != null;
+}
+
 // ─── Eligibility checks ───────────────────────────────────────────────────────
 
 /**
@@ -165,7 +182,17 @@ async function processPR(octokit, owner, repo, prNumber, config) {
     return;
   }
 
-  core.info("Eligible — adding to merge queue…");
+  core.info("Eligible — checking merge queue is enabled…");
+
+  const mqEnabled = await isMergeQueueEnabled(octokit, owner, repo, pr.baseRefName);
+  if (!mqEnabled) {
+    core.warning(
+      `PR #${prNumber}: merge queue is not enabled for branch "${pr.baseRefName}" — skipping`
+    );
+    return;
+  }
+
+  core.info("Adding to merge queue…");
 
   try {
     const entry = await enqueue(octokit, pr.id);

@@ -69,6 +69,14 @@ describe("enqueue-pullrequest action", () => {
     };
   }
 
+  // Mocks for each GraphQL call in order.
+  const mqEnabled  = { repository: { mergeQueue: { id: "MQ_1" } } };
+  const mqDisabled = { repository: { mergeQueue: null } };
+
+  function mockEnqueue(id = "MQE_1", position = 1) {
+    return { enqueuePullRequest: { mergeQueueEntry: { id, state: "QUEUED", position } } };
+  }
+
   // Loads the action module, which immediately calls run().
   async function runAction() {
     require("../index");
@@ -81,21 +89,37 @@ describe("enqueue-pullrequest action", () => {
     test("enqueues an eligible PR", async () => {
       setupInputs();
       mockOctokit.graphql
+        .mockResolvedValueOnce({ repository: { pullRequest: makePRPayload() } }) // getPRDetails
+        .mockResolvedValueOnce(mqEnabled)                                         // isMergeQueueEnabled
+        .mockResolvedValueOnce(mockEnqueue());                                    // enqueuePullRequest
+
+      await runAction();
+
+      expect(mockOctokit.graphql).toHaveBeenCalledTimes(3);
+      expect(mockOctokit.graphql).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining("MergeQueueEnabled"),
+        expect.objectContaining({ branch: "main" })
+      );
+      expect(mockOctokit.graphql).toHaveBeenNthCalledWith(
+        3,
+        expect.stringContaining("enqueuePullRequest"),
+        { prId: "PR_abc123" }
+      );
+      expect(core.setFailed).not.toHaveBeenCalled();
+    });
+
+    test("warns and skips when merge queue is not enabled for the base branch", async () => {
+      setupInputs();
+      mockOctokit.graphql
         .mockResolvedValueOnce({ repository: { pullRequest: makePRPayload() } })
-        .mockResolvedValueOnce({
-          enqueuePullRequest: {
-            mergeQueueEntry: { id: "MQE_1", state: "QUEUED", position: 1 },
-          },
-        });
+        .mockResolvedValueOnce(mqDisabled);
 
       await runAction();
 
       expect(mockOctokit.graphql).toHaveBeenCalledTimes(2);
-      // Second call must be the enqueuePullRequest mutation with the PR node ID
-      expect(mockOctokit.graphql).toHaveBeenNthCalledWith(
-        2,
-        expect.stringContaining("enqueuePullRequest"),
-        { prId: "PR_abc123" }
+      expect(core.warning).toHaveBeenCalledWith(
+        expect.stringContaining("merge queue is not enabled")
       );
       expect(core.setFailed).not.toHaveBeenCalled();
     });
@@ -127,20 +151,15 @@ describe("enqueue-pullrequest action", () => {
     test("enqueues a draft PR when skip-drafts=false", async () => {
       setupInputs({ "skip-drafts": "false" });
       mockOctokit.graphql
-        .mockResolvedValueOnce({
-          repository: { pullRequest: makePRPayload({ isDraft: true }) },
-        })
-        .mockResolvedValueOnce({
-          enqueuePullRequest: {
-            mergeQueueEntry: { id: "MQE_1", state: "QUEUED", position: 1 },
-          },
-        });
+        .mockResolvedValueOnce({ repository: { pullRequest: makePRPayload({ isDraft: true }) } })
+        .mockResolvedValueOnce(mqEnabled)
+        .mockResolvedValueOnce(mockEnqueue());
 
       await runAction();
 
-      expect(mockOctokit.graphql).toHaveBeenCalledTimes(2);
+      expect(mockOctokit.graphql).toHaveBeenCalledTimes(3);
       expect(mockOctokit.graphql).toHaveBeenNthCalledWith(
-        2,
+        3,
         expect.stringContaining("enqueuePullRequest"),
         expect.anything()
       );
@@ -161,20 +180,15 @@ describe("enqueue-pullrequest action", () => {
     test("enqueues PR with no label requirement when label input is empty", async () => {
       setupInputs({ label: "" });
       mockOctokit.graphql
-        .mockResolvedValueOnce({
-          repository: { pullRequest: makePRPayload({ labels: { nodes: [] } }) },
-        })
-        .mockResolvedValueOnce({
-          enqueuePullRequest: {
-            mergeQueueEntry: { id: "MQE_2", state: "QUEUED", position: 1 },
-          },
-        });
+        .mockResolvedValueOnce({ repository: { pullRequest: makePRPayload({ labels: { nodes: [] } }) } })
+        .mockResolvedValueOnce(mqEnabled)
+        .mockResolvedValueOnce(mockEnqueue("MQE_2"));
 
       await runAction();
 
-      expect(mockOctokit.graphql).toHaveBeenCalledTimes(2);
+      expect(mockOctokit.graphql).toHaveBeenCalledTimes(3);
       expect(mockOctokit.graphql).toHaveBeenNthCalledWith(
-        2,
+        3,
         expect.stringContaining("enqueuePullRequest"),
         expect.anything()
       );
@@ -185,9 +199,7 @@ describe("enqueue-pullrequest action", () => {
       mockOctokit.graphql.mockResolvedValueOnce({
         repository: {
           pullRequest: makePRPayload({
-            labels: {
-              nodes: [{ name: "enqueue-pullrequest" }, { name: "wip" }],
-            },
+            labels: { nodes: [{ name: "enqueue-pullrequest" }, { name: "wip" }] },
           }),
         },
       });
@@ -216,9 +228,7 @@ describe("enqueue-pullrequest action", () => {
     test("skips PR with insufficient required approvals", async () => {
       setupInputs({ "required-approvals": "2" });
       mockOctokit.graphql.mockResolvedValueOnce({
-        repository: {
-          pullRequest: makePRPayload({ reviews: { totalCount: 1 } }),
-        },
+        repository: { pullRequest: makePRPayload({ reviews: { totalCount: 1 } }) },
       });
 
       await runAction();
@@ -230,28 +240,19 @@ describe("enqueue-pullrequest action", () => {
     test("enqueues PR that meets the required approvals threshold", async () => {
       setupInputs({ "required-approvals": "2" });
       mockOctokit.graphql
-        .mockResolvedValueOnce({
-          repository: {
-            pullRequest: makePRPayload({ reviews: { totalCount: 2 } }),
-          },
-        })
-        .mockResolvedValueOnce({
-          enqueuePullRequest: {
-            mergeQueueEntry: { id: "MQE_1", state: "QUEUED", position: 1 },
-          },
-        });
+        .mockResolvedValueOnce({ repository: { pullRequest: makePRPayload({ reviews: { totalCount: 2 } }) } })
+        .mockResolvedValueOnce(mqEnabled)
+        .mockResolvedValueOnce(mockEnqueue());
 
       await runAction();
 
-      expect(mockOctokit.graphql).toHaveBeenCalledTimes(2);
+      expect(mockOctokit.graphql).toHaveBeenCalledTimes(3);
     });
 
     test("skips PR targeting a branch not in base-branches list", async () => {
       setupInputs({ "base-branches": "main,master" });
       mockOctokit.graphql.mockResolvedValueOnce({
-        repository: {
-          pullRequest: makePRPayload({ baseRefName: "develop" }),
-        },
+        repository: { pullRequest: makePRPayload({ baseRefName: "develop" }) },
       });
 
       await runAction();
@@ -268,6 +269,7 @@ describe("enqueue-pullrequest action", () => {
       setupInputs();
       mockOctokit.graphql
         .mockResolvedValueOnce({ repository: { pullRequest: makePRPayload() } })
+        .mockResolvedValueOnce(mqEnabled)
         .mockRejectedValueOnce(new Error("Branch protection not enabled"));
 
       await runAction();
@@ -286,9 +288,7 @@ describe("enqueue-pullrequest action", () => {
 
       await runAction();
 
-      expect(core.warning).toHaveBeenCalledWith(
-        expect.stringContaining("not found")
-      );
+      expect(core.warning).toHaveBeenCalledWith(expect.stringContaining("not found"));
     });
 
     test("logs warning and continues when getPRDetails throws", async () => {
@@ -316,11 +316,8 @@ describe("enqueue-pullrequest action", () => {
       };
       mockOctokit.graphql
         .mockResolvedValueOnce({ repository: { pullRequest: makePRPayload() } })
-        .mockResolvedValueOnce({
-          enqueuePullRequest: {
-            mergeQueueEntry: { id: "MQE_1", state: "QUEUED", position: 1 },
-          },
-        });
+        .mockResolvedValueOnce(mqEnabled)
+        .mockResolvedValueOnce(mockEnqueue());
 
       await runAction();
 
@@ -339,11 +336,8 @@ describe("enqueue-pullrequest action", () => {
       };
       mockOctokit.graphql
         .mockResolvedValueOnce({ repository: { pullRequest: makePRPayload() } })
-        .mockResolvedValueOnce({
-          enqueuePullRequest: {
-            mergeQueueEntry: { id: "MQE_1", state: "QUEUED", position: 1 },
-          },
-        });
+        .mockResolvedValueOnce(mqEnabled)
+        .mockResolvedValueOnce(mockEnqueue());
 
       await runAction();
 
@@ -357,20 +351,16 @@ describe("enqueue-pullrequest action", () => {
       setupInputs();
       github.context = {
         eventName: "check_run",
-        payload: {
-          check_run: { pull_requests: [{ number: 10 }, { number: 11 }] },
-        },
+        payload: { check_run: { pull_requests: [{ number: 10 }, { number: 11 }] } },
         repo: { owner: "acme", repo: "my-repo" },
       };
       mockOctokit.graphql
         .mockResolvedValueOnce({ repository: { pullRequest: makePRPayload() } })
-        .mockResolvedValueOnce({
-          enqueuePullRequest: { mergeQueueEntry: { id: "MQE_1", state: "QUEUED", position: 1 } },
-        })
+        .mockResolvedValueOnce(mqEnabled)
+        .mockResolvedValueOnce(mockEnqueue("MQE_1"))
         .mockResolvedValueOnce({ repository: { pullRequest: makePRPayload() } })
-        .mockResolvedValueOnce({
-          enqueuePullRequest: { mergeQueueEntry: { id: "MQE_2", state: "QUEUED", position: 2 } },
-        });
+        .mockResolvedValueOnce(mqEnabled)
+        .mockResolvedValueOnce(mockEnqueue("MQE_2", 2));
 
       await runAction();
 
@@ -388,16 +378,13 @@ describe("enqueue-pullrequest action", () => {
       setupInputs();
       github.context = {
         eventName: "check_suite",
-        payload: {
-          check_suite: { pull_requests: [{ number: 20 }] },
-        },
+        payload: { check_suite: { pull_requests: [{ number: 20 }] } },
         repo: { owner: "acme", repo: "my-repo" },
       };
       mockOctokit.graphql
         .mockResolvedValueOnce({ repository: { pullRequest: makePRPayload() } })
-        .mockResolvedValueOnce({
-          enqueuePullRequest: { mergeQueueEntry: { id: "MQE_1", state: "QUEUED", position: 1 } },
-        });
+        .mockResolvedValueOnce(mqEnabled)
+        .mockResolvedValueOnce(mockEnqueue());
 
       await runAction();
 
@@ -417,13 +404,11 @@ describe("enqueue-pullrequest action", () => {
       mockOctokit.paginate.mockResolvedValue([{ number: 5 }, { number: 6 }]);
       mockOctokit.graphql
         .mockResolvedValueOnce({ repository: { pullRequest: makePRPayload() } })
-        .mockResolvedValueOnce({
-          enqueuePullRequest: { mergeQueueEntry: { id: "MQE_1", state: "QUEUED", position: 1 } },
-        })
+        .mockResolvedValueOnce(mqEnabled)
+        .mockResolvedValueOnce(mockEnqueue("MQE_1"))
         .mockResolvedValueOnce({ repository: { pullRequest: makePRPayload() } })
-        .mockResolvedValueOnce({
-          enqueuePullRequest: { mergeQueueEntry: { id: "MQE_2", state: "QUEUED", position: 2 } },
-        });
+        .mockResolvedValueOnce(mqEnabled)
+        .mockResolvedValueOnce(mockEnqueue("MQE_2", 2));
 
       await runAction();
 
@@ -431,7 +416,7 @@ describe("enqueue-pullrequest action", () => {
         mockOctokit.rest.pulls.list,
         expect.objectContaining({ state: "open" })
       );
-      expect(mockOctokit.graphql).toHaveBeenCalledTimes(4);
+      expect(mockOctokit.graphql).toHaveBeenCalledTimes(6);
     });
 
     test("workflow_dispatch event with no open PRs logs and exits cleanly", async () => {
