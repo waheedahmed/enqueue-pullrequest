@@ -186,8 +186,8 @@ async function processPR(octokit, owner, repo, prNumber, config) {
 
   const mqEnabled = await isMergeQueueEnabled(octokit, owner, repo, pr.baseRefName);
   if (!mqEnabled) {
-    core.warning(
-      `PR #${prNumber}: merge queue is not enabled for branch "${pr.baseRefName}" — skipping`
+    core.setFailed(
+      `Merge queue is not enabled for branch "${pr.baseRefName}". Enable it under Settings → Branches → branch protection rules.`
     );
     return;
   }

@@ -109,7 +109,7 @@ describe("enqueue-pullrequest action", () => {
       expect(core.setFailed).not.toHaveBeenCalled();
     });
 
-    test("warns and skips when merge queue is not enabled for the base branch", async () => {
+    test("fails the workflow when merge queue is not enabled for the base branch", async () => {
       setupInputs();
       mockOctokit.graphql
         .mockResolvedValueOnce({ repository: { pullRequest: makePRPayload() } })
@@ -118,10 +118,9 @@ describe("enqueue-pullrequest action", () => {
       await runAction();
 
       expect(mockOctokit.graphql).toHaveBeenCalledTimes(2);
-      expect(core.warning).toHaveBeenCalledWith(
-        expect.stringContaining("merge queue is not enabled")
+      expect(core.setFailed).toHaveBeenCalledWith(
+        expect.stringContaining("Merge queue is not enabled")
       );
-      expect(core.setFailed).not.toHaveBeenCalled();
     });
 
     test("skips a closed PR without calling enqueue", async () => {
