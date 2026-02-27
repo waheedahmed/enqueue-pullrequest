@@ -35,16 +35,6 @@ name: Enqueue Pull Request
 
 on:
   pull_request:
-    types: [labeled, unlabeled, opened, reopened, synchronize, ready_for_review]
-  pull_request_review:
-    types: [submitted, dismissed]
-  check_run:
-    types: [completed]
-  check_suite:
-    types: [completed]
-  schedule:
-    - cron: "*/15 * * * *"
-  workflow_dispatch:
 
 jobs:
   enqueue-pullrequest:
