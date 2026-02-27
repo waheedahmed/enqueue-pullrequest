@@ -50,5 +50,5 @@ runs:
   main: "dist/index.js"
 
 branding:
-  icon: "git-merge-queue"
-  color: "#9a6700"
+  icon: "git-merge"
+  color: "orange"
