@@ -2,8 +2,6 @@
 
 A GitHub Action that automatically enqueues pull requests into [GitHub's native merge queue](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue) based on labels and review status.
 
-Inspired by [automerge-action](https://github.com/pascalgn/automerge-action), but targeting GitHub's built-in merge queue instead of directly merging PRs.
-
 ## How it works
 
 1. The action is triggered by PR events, review events, check completions, or a periodic schedule.
