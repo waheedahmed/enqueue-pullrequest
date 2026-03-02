@@ -204,10 +204,7 @@ async function processPR(octokit, owner, repo, prNumber, config) {
       core.info("Added to merge queue (no entry details returned)");
     }
   } catch (err) {
-    // Surface the real GitHub error message; it usually explains why enqueue failed
-    // (e.g. "branch protection not enabled", "checks not passing", etc.)
-    core.error(`Failed to enqueue PR #${prNumber}: ${err.message}`);
-    // Don't re-throw — process remaining PRs
+    core.setFailed(`Failed to enqueue PR #${prNumber}: ${err.message}`);
   }
 }
 

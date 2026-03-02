@@ -264,7 +264,7 @@ describe("enqueue-pullrequest action", () => {
   // ─── Error handling ──────────────────────────────────────────────────────────
 
   describe("error handling", () => {
-    test("logs error but does not set-fail when enqueue throws", async () => {
+    test("fails the workflow when enqueue throws", async () => {
       setupInputs();
       mockOctokit.graphql
         .mockResolvedValueOnce({ repository: { pullRequest: makePRPayload() } })
@@ -273,10 +273,9 @@ describe("enqueue-pullrequest action", () => {
 
       await runAction();
 
-      expect(core.error).toHaveBeenCalledWith(
+      expect(core.setFailed).toHaveBeenCalledWith(
         expect.stringContaining("Branch protection not enabled")
       );
-      expect(core.setFailed).not.toHaveBeenCalled();
     });
 
     test("logs warning when PR is not found (null response)", async () => {
