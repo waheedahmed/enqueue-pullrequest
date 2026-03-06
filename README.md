@@ -50,6 +50,15 @@ jobs:
 
 Then add the `enqueue-pullrequest` label to any PR you want automatically enqueued once it's ready.
 
+To process only PRs from a specific branch (useful for `schedule` or `workflow_dispatch` triggers), set `branch`:
+
+```yaml
+      - uses: waheedahmed/enqueue-pullrequest@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          branch: "feature/my-branch"
+```
+
 To enqueue **all** open PRs without requiring a label, set `label` to an empty string:
 
 ```yaml
@@ -66,6 +75,7 @@ To enqueue **all** open PRs without requiring a label, set `label` to an empty s
 |-------|-------------|---------|
 | `github-token` | Token for GitHub API access. Needs `pull-requests: write`. | `${{ github.token }}` |
 | `label` | Label that triggers enqueuing. Set to `""` to process every open PR regardless of labels. | `enqueue-pullrequest` |
+| `branch` | Head branch name to filter PRs by for broad events (`schedule`, `workflow_dispatch`, `push`, etc.). Leave empty to process all open PRs. | `""` |
 | `skip-labels` | Comma-separated blocking labels (e.g. `wip,do-not-merge`). | `""` |
 | `base-branches` | Comma-separated list of allowed base branches. Empty = all branches. | `""` |
 | `skip-drafts` | Skip draft pull requests. | `true` |

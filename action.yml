@@ -19,6 +19,15 @@ inputs:
     required: false
     default: "enqueue-pullrequest"
 
+  branch:
+    description: >
+      Head branch name used to filter pull requests for broad events
+      (schedule, workflow_dispatch, push, etc.). When provided only PRs whose
+      head branch matches this value are processed. Leave empty to process all
+      open PRs.
+    required: false
+    default: ""
+
   skip-labels:
     description: >
       Comma-separated list of labels that prevent a PR from being added to the

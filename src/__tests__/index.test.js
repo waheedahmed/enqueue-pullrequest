@@ -45,6 +45,7 @@ describe("enqueue-pullrequest action", () => {
     const defaults = {
       "github-token": "ghs_test",
       "label": "enqueue-pullrequest",
+      "branch": "",
       "skip-labels": "",
       "base-branches": "",
       "skip-drafts": "true",
@@ -410,9 +411,10 @@ describe("enqueue-pullrequest action", () => {
 
       await runAction();
 
+      // no head filter — scans all open PRs
       expect(mockOctokit.paginate).toHaveBeenCalledWith(
         mockOctokit.rest.pulls.list,
-        expect.objectContaining({ state: "open" })
+        expect.not.objectContaining({ head: expect.anything() })
       );
       expect(mockOctokit.graphql).toHaveBeenCalledTimes(6);
     });
@@ -431,6 +433,27 @@ describe("enqueue-pullrequest action", () => {
       expect(mockOctokit.graphql).not.toHaveBeenCalled();
       expect(core.info).toHaveBeenCalledWith("No pull requests to process.");
       expect(core.setFailed).not.toHaveBeenCalled();
+    });
+
+    test("branch input filters PRs by head branch for broad events", async () => {
+      setupInputs({ branch: "feature/my-branch" });
+      github.context = {
+        eventName: "workflow_dispatch",
+        payload: {},
+        repo: { owner: "acme", repo: "my-repo" },
+      };
+      mockOctokit.paginate.mockResolvedValue([{ number: 42 }]);
+      mockOctokit.graphql
+        .mockResolvedValueOnce({ repository: { pullRequest: makePRPayload() } })
+        .mockResolvedValueOnce(mqEnabled)
+        .mockResolvedValueOnce(mockEnqueue());
+
+      await runAction();
+
+      expect(mockOctokit.paginate).toHaveBeenCalledWith(
+        mockOctokit.rest.pulls.list,
+        expect.objectContaining({ head: "acme:feature/my-branch" })
+      );
     });
 
     test("pull_request event with missing PR number logs warning", async () => {
