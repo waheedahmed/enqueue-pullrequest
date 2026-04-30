@@ -47,6 +47,22 @@ jobs:
           label: "enqueue-pullrequest"
           skip-labels: "wip,do-not-merge"
 ```
+### Merge Retry Options
+
+Sometimes, the pull request check runs haven't finished yet, so the action will retry the merge after some time. You can control this behavior with the following options:
+
+- `merge-retries`: Number of times to retry enqueueing if it fails. Default is 6. Set to 0 to disable retry logic.
+- `merge-retry-sleep`: Time (in milliseconds) to sleep between retries. Default is 5000 (5 seconds). Set to 0 to disable sleeping between retries.
+
+Example usage:
+
+```yaml
+      - uses: waheedahmed/enqueue-pullrequest@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          merge-retries: 8
+          merge-retry-sleep: 7000
+```
 
 Then add the `enqueue-pullrequest` label to any PR you want automatically enqueued once it's ready.
 
