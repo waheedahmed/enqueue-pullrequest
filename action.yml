@@ -1,3 +1,14 @@
+r  merge-retries:
+    description: >
+      Number of times to retry enqueueing if it fails. Default is 6. Set to 0 to disable retry logic.
+    required: false
+    default: "6"
+
+  merge-retry-sleep:
+    description: >
+      Time (in milliseconds) to sleep between retries. Default is 5000 (5 seconds). Set to 0 to disable sleeping between retries.
+    required: false
+    default: "5000"
 name: "Enqueue Pull Request"
 description: "Automatically enqueue pull requests into GitHub's native merge queue based on labels and review status"
 author: "waheedahmed"

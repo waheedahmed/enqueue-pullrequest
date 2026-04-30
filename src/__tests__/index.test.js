@@ -266,7 +266,7 @@ describe("enqueue-pullrequest action", () => {
 
   describe("error handling", () => {
     test("fails the workflow when enqueue throws", async () => {
-      setupInputs();
+      setupInputs({ "merge-retries": "0" });
       mockOctokit.graphql
         .mockResolvedValueOnce({ repository: { pullRequest: makePRPayload() } })
         .mockResolvedValueOnce(mqEnabled)
