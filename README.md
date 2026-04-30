@@ -96,6 +96,8 @@ To enqueue **all** open PRs without requiring a label, set `label` to an empty s
 | `base-branches` | Comma-separated list of allowed base branches. Empty = all branches. | `""` |
 | `skip-drafts` | Skip draft pull requests. | `true` |
 | `required-approvals` | Minimum approving reviews before enqueuing. `0` = rely on branch protection rules. | `0` |
+| `merge-retries` | Number of times to retry enqueueing if it fails. Set to `0` to disable retry logic. | `6` |
+| `merge-retry-sleep` | Time (in milliseconds) to sleep between retries. Set to `0` to disable sleeping between retries. | `5000` |
 
 ## Token permissions
 
