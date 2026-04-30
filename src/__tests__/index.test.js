@@ -50,6 +50,8 @@ describe("enqueue-pullrequest action", () => {
       "base-branches": "",
       "skip-drafts": "true",
       "required-approvals": "0",
+      "enqueue-retries": "0",
+      "enqueue-retry-sleep": "0",
     };
     jest.spyOn(core, "getInput").mockImplementation(
       (name) => ({ ...defaults, ...overrides }[name] ?? "")

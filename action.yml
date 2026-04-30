@@ -31,7 +31,7 @@ inputs:
   skip-labels:
     description: >
       Comma-separated list of labels that prevent a PR from being added to the
-      merge queue (e.g. "wip, do-not-merge, blocked").
+      merge queue (e.g. "wip, do-not-enqueue, blocked").
     required: false
     default: ""
 
@@ -54,8 +54,20 @@ inputs:
     required: false
     default: "0"
 
+  enqueue-retries:
+    description: >
+      Number of times to retry enqueuing if it fails. Default is 6. Set to 0 to disable retry logic.
+    required: false
+    default: "6"
+
+  enqueue-retry-sleep:
+    description: >
+      Time (in milliseconds) to sleep between retries. Default is 5000 (5 seconds). Set to 0 to disable sleeping between retries.
+    required: false
+    default: "5000"
+
 runs:
-  using: "node20"
+  using: "node22"
   main: "dist/index.js"
 
 branding:
