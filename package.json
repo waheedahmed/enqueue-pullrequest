@@ -1,6 +1,6 @@
 {
   "name": "enqueue-pullrequest",
-  "version": "0.0.1",
+  "version": "0.0.5",
   "description": "GitHub Action to automatically enqueue pull requests into GitHub's native merge queue",
   "main": "dist/index.js",
   "scripts": {

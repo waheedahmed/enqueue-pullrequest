@@ -48,6 +48,23 @@ jobs:
           skip-labels: "wip,do-not-merge"
 ```
 
+### Enqueue Retry Options
+
+Sometimes, the pull request check runs haven't finished yet, so the action will retry the enqueue after some time. You can control this behavior with the following options:
+
+- `enqueue-retries`: Number of times to retry enqueuing if it fails. Default is 6. Set to 0 to disable retry logic.
+- `enqueue-retry-sleep`: Time (in milliseconds) to sleep between retries. Default is 5000 (5 seconds). Set to 0 to disable sleeping between retries.
+
+Example usage:
+
+```yaml
+      - uses: waheedahmed/enqueue-pullrequest@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          enqueue-retries: 8
+          enqueue-retry-sleep: 7000
+```
+
 Then add the `enqueue-pullrequest` label to any PR you want automatically enqueued once it's ready.
 
 To process only PRs from a specific branch (useful for `schedule` or `workflow_dispatch` triggers), set `branch`:
@@ -80,6 +97,8 @@ To enqueue **all** open PRs without requiring a label, set `label` to an empty s
 | `base-branches` | Comma-separated list of allowed base branches. Empty = all branches. | `""` |
 | `skip-drafts` | Skip draft pull requests. | `true` |
 | `required-approvals` | Minimum approving reviews before enqueuing. `0` = rely on branch protection rules. | `0` |
+| `enqueue-retries` | Number of times to retry enqueuing if it fails. | `6` |
+| `enqueue-retry-sleep` | Time (in milliseconds) to sleep between retries. | `5000` |
 
 ## Token permissions
 

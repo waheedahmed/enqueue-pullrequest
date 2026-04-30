@@ -21,6 +21,8 @@ function getConfig() {
       .filter(Boolean),
     skipDrafts: core.getInput("skip-drafts") !== "false",
     requiredApprovals: parseInt(core.getInput("required-approvals"), 10) || 0,
+    enqueueRetries: parseInt(core.getInput("enqueue-retries"), 10),
+    enqueueRetrySleep: parseInt(core.getInput("enqueue-retry-sleep"), 10),
   };
 }
 
@@ -194,17 +196,34 @@ async function processPR(octokit, owner, repo, prNumber, config) {
 
   core.info("Adding to merge queue…");
 
-  try {
-    const entry = await enqueue(octokit, pr.id);
-    if (entry) {
-      core.info(
-        `Added to merge queue: position=${entry.position}, state=${entry.state}`
-      );
-    } else {
-      core.info("Added to merge queue (no entry details returned)");
+  // Retry logic for enqueue
+  const maxRetries = typeof config.enqueueRetries === 'number' && !isNaN(config.enqueueRetries) ? config.enqueueRetries : 6;
+  const retrySleep = typeof config.enqueueRetrySleep === 'number' && !isNaN(config.enqueueRetrySleep) ? config.enqueueRetrySleep : 5000;
+
+  let attempt = 0;
+  while (attempt <= maxRetries) {
+    try {
+      const entry = await enqueue(octokit, pr.id);
+      if (entry) {
+        core.info(
+          `Added to merge queue: position=${entry.position}, state=${entry.state}`
+        );
+      } else {
+        core.info("Added to merge queue (no entry details returned)");
+      }
+      return;
+    } catch (err) {
+      if (maxRetries === 0 || attempt === maxRetries) {
+        core.setFailed(`Failed to enqueue PR #${prNumber}: ${err.message}`);
+        return;
+      }
+      core.warning(`Enqueue failed (attempt ${attempt + 1}/${maxRetries + 1}): ${err.message}`);
+      if (retrySleep > 0) {
+        core.info(`Sleeping for ${retrySleep}ms before retrying…`);
+        await new Promise((resolve) => setTimeout(resolve, retrySleep));
+      }
     }
-  } catch (err) {
-    core.setFailed(`Failed to enqueue PR #${prNumber}: ${err.message}`);
+    attempt++;
   }
 }
 
