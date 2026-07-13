@@ -67,7 +67,7 @@ inputs:
     default: "5000"
 
 runs:
-  using: "node22"
+  using: "node24"
   main: "dist/index.js"
 
 branding:
